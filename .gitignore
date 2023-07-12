@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+Seongwan/test_img/
+Seongwan/train_img/
 # C extensions
 *.so
 
