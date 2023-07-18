@@ -15,6 +15,8 @@ from albumentations.pytorch import ToTensorV2
 from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 import segmentation_models_pytorch as smp
+import random
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -158,6 +160,37 @@ def calculate_dice_scores(ground_truth_df, prediction_df, img_shape=(224, 224)) 
     dice_scores = [score for score in dice_scores if score is not None]  # Exclude None values
     return np.mean(dice_scores)
 
+def cutmix(image1, image2, mask1,mask2):
+    # 이미지 크기 및 채널 수 확인
+    _, height, width = image1.shape
+
+    # 랜덤하게 가로, 세로 위치 선정
+    cut_height = int(height * random.uniform(0.2, 0.8))
+    cut_width = int(width * random.uniform(0.2, 0.8))
+
+    # 가운데 위치 선정
+    start_height = int((height - cut_height) / 2) + int(height * random.uniform(-0.2,0.2))
+    start_width = int((width - cut_width) / 2) + int(width * random.uniform(-0.2,0.2))
+
+    # 이미지 자르기
+    image1_cut = image1[:,start_height:start_height+cut_height, start_width:start_width+cut_width]
+    image2_cut = image2[:,start_height:start_height+cut_height, start_width:start_width+cut_width]
+
+    # CutMix 적용
+    mixed_image = np.copy(image1)
+    mixed_image[:,start_height:start_height+cut_height, start_width:start_width+cut_width] = image2_cut
+
+
+    mask1_cut = mask1[start_height:start_height+cut_height, start_width:start_width+cut_width]
+    mask2_cut = mask2[start_height:start_height+cut_height, start_width:start_width+cut_width]
+
+    # CutMix 적용
+    mixed_mask = np.copy(mask1)
+    mixed_mask[ start_height:start_height+cut_height, start_width:start_width+cut_width] = mask2_cut
+
+
+    return mixed_image, mixed_mask
+
 
 class SatelliteDataset(Dataset):
     def __init__(self, csv_file, transform=None, infer=False, is_validation=False, is_test=False):
@@ -165,41 +198,51 @@ class SatelliteDataset(Dataset):
         self.transform = transform
         self.infer = infer
         self.is_validation = is_validation
-        if(is_test):
+        self.validation_index = [11, 37, 107, 194, 276, 311, 387, 417, 543, 614, 682, 802, 813, 870, 892, 896, 1112, 1113, 1127, 1275, 1308, 1414, 1427, 1449, 1450, 1549, 1655, 1787, 2033, 2093, 2126, 2248, 2271, 2370, 2470, 2554,2600, 2652, 2680, 2708, 2844, 2917, 2919, 2953, 2955, 3227, 3288, 3312, 3460, 3489, 3559, 3608, 3735, 3780, 3874, 3884, 3910, 3981, 4056, 4060, 4132, 4174, 4360, 4448, 4632, 4682, 4777, 4801, 4883, 4887, 4938, 4956, 4999, 5074, 5097, 5101, 5121, 5152, 5173, 5327, 5445, 5534, 5568, 5630, 5634, 5722, 5897, 5957, 6195, 6197, 6265, 6384, 6457, 6470, 6484, 6521, 6536, 6590, 6720, 6742]
+        self.train_index = [id for id in range(len(self.data)) if id not in self.validation_index]
+
+        if(is_test): # test일 때
           pass
-        elif(is_validation):
-          self.data = self.data[6500:]
-        else:
-          self.data = self.data[:6500]
+        elif(self.is_validation): # validation일 때
+          self.data = self.data.iloc[self.validation_index]
+        else: #train일 때
+          self.data = self.data.iloc[self.train_index]
 
     def __len__(self):
-        return len(self.data)
+        if(self.is_validation):
+          return 5*len(self.data)
+        else:
+          return len(self.data)
 
     def __getitem__(self, idx):
-        img_path = self.data.iloc[idx, 1]
-        image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
+
+        if(self.is_validation):
+          idx = idx % len(self.data)
+
+        img_path = self.data.iloc[idx, 2]
+        image = cv2.imread(img_path) 
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)       
         if self.infer:
-            if self.transform:
-                image = self.transform(image=image)['image']
+            if self.transform: #infer는 test_transform으로
+                image = transform(image=image)['image']
             return image
 
-        mask_rle = self.data.iloc[idx, 2]
+        mask_rle = self.data.iloc[idx, 3]
         mask = rle_decode(mask_rle, (image.shape[0], image.shape[1]))
-       
+
         if self.transform:
-            if (self.is_validation):
-                augmented = vaildation_transform(image=image, mask=mask)
-                image = augmented['image']
-                mask = augmented['mask']
-            else:
+          if self.is_validation: #validation
+            augmented = vaildation_transform(image=image, mask=mask)
+            image = augmented['image']
+            mask = augmented['mask']
+
+          else: #train
                 augmented = train_transform(image=image, mask=mask)
                 image = augmented['image']
                 mask = augmented['mask']
 
         return image, mask
-
+    
 def train(num_epoch):
     # training loop
     for epoch in range(num_epoch):  # 10 에폭 동안 학습합니다.
@@ -229,7 +272,7 @@ def train(num_epoch):
                     epoch_loss += loss.item()
         # lr 조정           
         scheduler.step()
-
+        print("lr: ", optimizer.param_groups[0]['lr'])
         model.eval()
         vali_epoch_loss=0
         dice_score = 0
@@ -251,8 +294,9 @@ def train(num_epoch):
 
             dice_score+=calculate_dice_scores(masks,preds) * len(images)
 
-            torch.save(model.state_dict(),f'unet_model_v8_{epoch+1}epoch.pt')
+            torch.save(model.state_dict(),f'unet_model_v10_{epoch+1}epoch.pt')
 
+        # train 이미지가 25배가 되었음으로 나눠줘야 함.
         print(f'Epoch {epoch+1}, train_Loss: {epoch_loss/(len(dataloader)*25)} vali_loss: {vali_epoch_loss/len(vali_dataloader)} dice_score: {dice_score/len(vali_dataset)}')
 
 
@@ -308,7 +352,7 @@ prep_fun = smp.encoders.get_preprocessing_fn(
 )
 
 # model 초기화
-model = smp.Unet(
+model = smp.UnetPlusPlus(
     encoder_name = Encoder,
     encoder_weights = Weights,
     in_channels = 3,     
@@ -317,30 +361,30 @@ model = smp.Unet(
 
 model.to(device)
 # 저장한 모델 불러오기
-#model.load_state_dict(torch.load('unet_model_v5.pt'))
+#model.load_state_dict(torch.load('unet_model_v9_17epoch.pt'))
 
 # loss function과 optimizer 정의
 criterion = MixedLoss(alpha = 10.0,gamma = 2.0)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer=optimizer,
                                         lr_lambda=lambda epoch: 0.9 ** epoch,
                                         last_epoch=-1,
                                         verbose=False)
 
 if __name__ == '__main__':
-    batch_size = 36 # 현재 모델은 36이 VRAM 24GB로 최대임
+    batch_size = 14 # 현재 모델은 36이 VRAM 24GB로 최대임
     epoch = 30
-    dataset = SatelliteDataset(csv_file='./train.csv', transform=transform)
+    dataset = SatelliteDataset(csv_file='./train_remove_little_damaged.csv', transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=6)
 
-    vali_dataset = SatelliteDataset(csv_file='./train.csv', transform=transform, is_validation=True)
+    vali_dataset = SatelliteDataset(csv_file='./train_remove_little_damaged.csv', transform=transform, is_validation=True)
     vali_dataloader = DataLoader(vali_dataset, batch_size=batch_size, shuffle=False, num_workers=6)
 
     test_dataset = SatelliteDataset(csv_file='./test.csv', transform=transform, infer=True, is_test=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=6)
     
     train(epoch)  # 모델 훈련
-    test_inference()
     vali_inference()
+    #test_inference()
     # 모델 저장
-    torch.save(model.state_dict(),'unet_model_v8.pt')
+    torch.save(model.state_dict(),'unet_model_v10_fianl.pt')
