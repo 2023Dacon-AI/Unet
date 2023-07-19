@@ -30,7 +30,7 @@ model = smp.Unet(
 )
 model = model.to(device)
 
-criterion = MixedLoss(alpha = 10.0,
+criterion = MixedLoss(alpha = 8.0,
                       gamma = 2.0)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
