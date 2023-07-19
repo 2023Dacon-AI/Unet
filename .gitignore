@@ -5,6 +5,9 @@ __pycache__/
 
 Seongwan/test_img/
 Seongwan/train_img/
+Sangyun/models/
+Sangyun/data/
+Sangyun/src/wandb
 # C extensions
 *.so
 
