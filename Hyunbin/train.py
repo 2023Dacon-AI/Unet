@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_dir = '/content/drive/MyDrive/'
-model_name='unet'
+model_name='unet_'
 
 # Model
 Encoder = 'timm-regnety_320'
@@ -59,7 +59,7 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=32
+batch_size=16
 epochs=50
 
 dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
@@ -108,7 +108,7 @@ for epoch in range(epochs):
     dice_score /= len(dataset_val)
     if dice_score > best_dice_score:
         best_dice_score = dice_score
-        torch.save(model.state_dict(), model_dir+model_name+'_best.pth')
+        torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score))+'.pth')
     scheduler.step(epoch_loss_val)
     print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
 

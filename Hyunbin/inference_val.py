@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model_dir = '/content/drive/MyDrive/'
-model_name='unet'
+model_name='unet_'
 
 # Model
 Encoder = 'timm-regnety_320'
@@ -27,7 +27,7 @@ model = smp.Unet(
     classes = 1,
     activation = None
 )
-model = model.load_state_dict(torch.load(model_dir+model_name+'_best.pth'))
+model = model.load_state_dict(torch.load(model_dir+model_name+'.pth'))
 model = model.to(device)
 
 transform_val = A.Compose(
@@ -41,7 +41,7 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=32
+batch_size=16
 
 dataset_val = SatelliteDataset(csv_file='./train_edited.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
