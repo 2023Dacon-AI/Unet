@@ -14,7 +14,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet'
 
 # Model
-Encoder = 'regnet_y_128gf'
+Encoder = 'timm-regnety_120'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
