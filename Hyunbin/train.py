@@ -33,11 +33,8 @@ model = model.to(device)
 criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
-scheduler = torch.optim.lr_scheduler.LambdaLR(
-    optimizer=optimizer,
-    lr_lambda=lambda epoch: 0.9 ** epoch,
-    last_epoch=-1,
-    verbose=False
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='min', factor=0.1, patience=10, verbose=True
 )
 
 #Transform
@@ -88,9 +85,6 @@ for epoch in range(epochs):
 
         epoch_loss += loss.item()
 
-    scheduler.step()
-    print("lr: ", optimizer.param_groups[0]['lr'])
-
     model.eval()
     epoch_loss_val=0
     dice_score = 0
@@ -115,6 +109,7 @@ for epoch in range(epochs):
     if dice_score > best_dice_score:
         best_dice_score = dice_score
         torch.save(model.state_dict(), model_dir+model_name+'_best.pth')
+    scheduler.step(epoch_loss_val)
     print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
 
 torch.save(model.state_dict(), model_dir+model_name+'.pth')
