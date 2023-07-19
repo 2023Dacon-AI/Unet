@@ -43,7 +43,7 @@ transform_val = A.Compose(
 
 batch_size=32
 
-dataset_val = SatelliteDataset(csv_file='./train.csv', transform=transform_val, val=True)
+dataset_val = SatelliteDataset(csv_file='./train_edited.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
 
 with torch.no_grad():
