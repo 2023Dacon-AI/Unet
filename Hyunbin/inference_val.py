@@ -13,7 +13,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet'
 
 # Model
-Encoder = 'resnet34'
+Encoder = 'regnet_y_128gf'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
