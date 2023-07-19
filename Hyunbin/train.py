@@ -10,6 +10,8 @@ from dicescore import calculate_dice_scores
 from tqdm import tqdm
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_dir = '/content/drive/MyDrive/'
+model_name='unet'
 
 # Model
 Encoder = 'resnet34'
@@ -27,8 +29,6 @@ model = smp.Unet(
     activation = None
 )
 model = model.to(device)
-model_name=''
-model = model.load_state_dict(torch.load(model_name))
 
 criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
@@ -61,15 +61,8 @@ transform_val = A.Compose(
         ToTensorV2()
     ]
 )
-transform_test = A.Compose(
-    [
-        A.Resize(224, 224),
-        A.Normalize(),
-        ToTensorV2()
-    ]
-)
 
-batch_size= 32
+batch_size=32
 epochs=50
 
 dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
@@ -78,8 +71,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_worker
 dataset_val = SatelliteDataset(csv_file='./train.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
 
-dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test, test=True)
-dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)
+best_dice_score=0
 
 for epoch in range(epochs): 
     model.train()
@@ -119,4 +111,10 @@ for epoch in range(epochs):
 
         dice_score+=calculate_dice_scores(masks, preds)*len(images)
 
-    print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score/len(dataset_val)}')
+    dice_score /= len(dataset_val)
+    if dice_score > best_dice_score:
+        best_dice_score = dice_score
+        torch.save(model.state_dict(), model_dir+model_name+'_best.pth')
+    print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
+
+torch.save(model.state_dict(), model_dir+model_name+'.pth')
