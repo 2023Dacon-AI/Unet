@@ -108,7 +108,7 @@ for epoch in range(epochs):
     dice_score /= len(dataset_val)
     if dice_score > best_dice_score:
         best_dice_score = dice_score
-        torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score))+'.pth')
+        torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score*100))+'.pth')
     scheduler.step(epoch_loss_val)
     print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
 
