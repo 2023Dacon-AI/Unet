@@ -52,13 +52,13 @@ class SatelliteDataset(Dataset):
 
         idx = idx%len(self.data) #25배로 불린 이유는 crop을 위함, 다시 원래대로
 
-        img_path = self.data.iloc[idx, 2]
+        img_path = self.data.iloc[idx, 1]
         image = cv2.imread(img_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if(self.test): return image
         else:
-            mask_rle = self.data.iloc[idx, 3]
+            mask_rle = self.data.iloc[idx, 2]
             mask = rle_decode(mask_rle, (1024, 1024))
 
             left = crop_size * (randx)
