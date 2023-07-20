@@ -28,11 +28,11 @@ model = smp.Unet(
     classes = 1,
     activation = None
 )
-model = model.to(device)
+model.to(device)
 
 criterion = MixedLoss(alpha = 8.0,
                       gamma = 2.0)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.1, patience=10, verbose=True
 )
@@ -59,8 +59,8 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=16
-epochs=50
+batch_size=32
+epochs=80
 
 dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -108,8 +108,6 @@ for epoch in range(epochs):
     dice_score /= len(dataset_val)
     if dice_score > best_dice_score:
         best_dice_score = dice_score
-        torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score))+'.pth')
+        torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score*100))+'.pt')
     scheduler.step(epoch_loss_val)
     print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
-
-torch.save(model.state_dict(), model_dir+model_name+'.pth')

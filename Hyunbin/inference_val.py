@@ -27,8 +27,9 @@ model = smp.Unet(
     classes = 1,
     activation = None
 )
-model = model.load_state_dict(torch.load(model_dir+model_name+'.pth'))
 model = model.to(device)
+model = model.load_state_dict(torch.load(model_dir+model_name+'.pt'))
+
 
 transform_val = A.Compose(
     [
@@ -41,7 +42,7 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=16
+batch_size=32
 
 dataset_val = SatelliteDataset(csv_file='./train_edited.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
