@@ -59,13 +59,13 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=32
+batch_size=40
 epochs=80
 
-dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
+dataset = SatelliteDataset(csv_file='./train.csv', transform=transform, val=False)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-dataset_val = SatelliteDataset(csv_file='./train_edited.csv', transform=transform_val, val=True)
+dataset_val = SatelliteDataset(csv_file='./train.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
 
 best_dice_score=0
