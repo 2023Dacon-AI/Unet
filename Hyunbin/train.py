@@ -28,11 +28,11 @@ model = smp.Unet(
     classes = 1,
     activation = None
 )
-model = model.to(device)
+model.to(device)
 
 criterion = MixedLoss(alpha = 8.0,
                       gamma = 2.0)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.1, patience=10, verbose=True
 )
@@ -111,5 +111,3 @@ for epoch in range(epochs):
         torch.save(model.state_dict(), model_dir+model_name+str(int(dice_score*100))+'.pt')
     scheduler.step(epoch_loss_val)
     print(f'Epoch {epoch+1}, train_loss: {epoch_loss/len(dataloader)} val_loss: {epoch_loss_val/len(dataloader_val)} dice_score: {dice_score}')
-
-torch.save(model.state_dict(), model_dir+model_name+'.pt')
