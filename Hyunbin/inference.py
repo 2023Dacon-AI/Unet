@@ -28,8 +28,9 @@ model = smp.Unet(
     classes = 1,
     activation = None
 )
-model = model.load_state_dict(torch.load(model_dir+model_name+'.pth'))
 model = model.to(device)
+model = model.load_state_dict(torch.load(model_dir+model_name+'.pth'))
+
 
 transform_test = A.Compose(
     [

@@ -32,7 +32,7 @@ model = model.to(device)
 
 criterion = MixedLoss(alpha = 8.0,
                       gamma = 2.0)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.1, patience=10, verbose=True
 )
@@ -60,7 +60,7 @@ transform_val = A.Compose(
 )
 
 batch_size=16
-epochs=50
+epochs=80
 
 dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
