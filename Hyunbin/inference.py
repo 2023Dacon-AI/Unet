@@ -29,7 +29,7 @@ model = smp.Unet(
     activation = None
 )
 model = model.to(device)
-model = model.load_state_dict(torch.load(model_dir+model_name+'.pth'))
+model = model.load_state_dict(torch.load(model_dir+model_name+'.pt'))
 
 
 transform_test = A.Compose(
@@ -40,7 +40,7 @@ transform_test = A.Compose(
     ]
 )
 
-batch_size=16
+batch_size=32
 
 dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test, test=True)
 dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)
