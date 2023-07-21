@@ -24,3 +24,12 @@
 │   ├───pretrained.py           # Code for pretrained (deprecated)
 └───README.md
 ```
+
+## Scripts
+Setup folder structures as above and modify config/ yaml files for customization
+
+### Finetune Model
+```
+cd Sangyun/src
+python main.py ../config/efficientnet.yaml
+```
