@@ -34,7 +34,7 @@ criterion = MixedLoss(alpha = 8.0,
                       gamma = 2.0)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=0.1, patience=10, verbose=True
+    optimizer, mode='min', factor=0.1, patience=3, verbose=True
 )
 
 #Transform
