@@ -23,7 +23,7 @@
             "justMyCode": false,
             "cwd": "${fileDirname}",
             "args": [
-                "config.yaml"
+                "--config=../config/efficientnet.yaml"
             ]
         }
     ]
