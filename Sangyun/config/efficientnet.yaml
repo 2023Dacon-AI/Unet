@@ -6,7 +6,7 @@
 
   # Data Config   
   data_dir: ../data,
-  train_file: train_edited.csv,
+  train_file: train_drop.csv,
   num_workers: 4,
 
   # Model Config
@@ -17,7 +17,7 @@
   activation: sigmoid,
 
   # Train Config
-  epochs: 50,
+  epochs: 10,
   batch_size: 8,
   accumulation_steps: 4,
   verbose: true,

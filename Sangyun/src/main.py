@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+import json
 import logging
 import os
 import sys
@@ -199,6 +200,10 @@ def main(cfg=None) -> None:
             accumulation_steps=cfg.accumulation_steps,
             verbose=cfg.verbose,
         )
+
+        if cfg.output_dir is not None:
+            with open(os.path.join(cfg.output_dir, "config.json"), "w") as json_file:
+                json.dump(cfg, json_file)
 
 
     if cfg.do_test:
