@@ -59,7 +59,7 @@ class Meter:
         return {(prefix + name): values[-1] for name, values in self._data.items()}
 
 
-class Runner:
+class Trainer:
 
     def __init__(
             self,
@@ -118,7 +118,7 @@ class Runner:
     def _prepare_input(self, batch: Mapping[str, torch.Tensor]) -> List:
         """Collect model input data from batch (collect list)"""
         if not isinstance(batch, dict):
-            raise ValueError("Runner expect batches to be of type Dict! Got type {}.".format(type(batch)))
+            raise ValueError("Trainer expect batches to be of type Dict! Got type {}.".format(type(batch)))
         return [batch[k] for k in batch if k in self.input_keys]
 
     def _prepare_output(self, model_output: Union[torch.Tensor, list, tuple, dict]) -> Mapping[str, torch.Tensor]:
@@ -129,7 +129,7 @@ class Runner:
 
         if isinstance(model_output, (list, tuple)):
             if len(model_output) != len(self.output_keys):
-                raise ValueError("Runner have output keys {}, but model produce only {} outputs".format(
+                raise ValueError("Trainer have output keys {}, but model produce only {} outputs".format(
                     self.output_keys, len(model_output))
                 )
             output = {k: v for k, v in zip(self.output_keys, model_output)}
@@ -155,7 +155,6 @@ class Runner:
             output: Mapping[str, torch.Tensor],
             target: Mapping[str, torch.Tensor],
     ) -> Mapping[str, torch.Tensor]:
-
         losses_dict = {}
 
         # compute loss for each output
@@ -175,23 +174,20 @@ class Runner:
             target: Mapping[str, torch.Tensor],
     ) -> Mapping[str, torch.Tensor]:
         metrics_dict = {}
-        for output_name, metrics in self.metrics.items():
-            for i, metric in enumerate(metrics):
-                metric_name = output_name
-                metric_value = metric(
-                    output['mask'],
-                    target['mask'],
-                )
-                if metric_name in metrics_dict.keys():
-                    metric_name = metric_name + '_' + str(i)
-                metrics_dict[metric_name] = metric_value
+
+        for output_name, metric in self.metrics.items():
+            metric_name = output_name
+            metric_value = metric(
+                output['mask'],
+                target['mask'],
+            )
+            metrics_dict[metric_name] = metric_value
         return metrics_dict
 
     def _reset_metrics(self):
-        for output_name, metrics in self.metrics.items():
-            for i, metric in enumerate(metrics):
-                if hasattr(metric, "reset"):
-                    metric.reset()
+        for output_name, metric in self.metrics.items():
+            if hasattr(metric, "reset"):
+                metric.reset()
 
     def _backward(self, loss: torch.Tensor, accumulation_steps: int = 1) -> None:
         total_loss = loss / accumulation_steps
@@ -206,7 +202,7 @@ class Runner:
         str_log = ', '.join(str_values)
         return str_log
 
-    def fit(
+    def train(
             self,
             train_dataloader,
             train_steps=None,
@@ -225,7 +221,7 @@ class Runner:
         # define training callbacks
         logs = {}
         callbacks = CallbackList(callbacks or [])
-        callbacks.set_runner(self)
+        callbacks.set_trainer(self)
         callbacks.on_train_begin(logs=logs)
 
         # start training loop

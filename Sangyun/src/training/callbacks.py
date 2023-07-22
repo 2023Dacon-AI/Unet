@@ -30,9 +30,9 @@ class CallbackList(object):
         for callback in self.callbacks:
             callback.set_params(params)
 
-    def set_runner(self, runner):
+    def set_trainer(self, trainer):
         for callback in self.callbacks:
-            callback.set_runner(runner)
+            callback.set_trainer(trainer)
 
     def on_epoch_begin(self, epoch, logs=None):
         """Called at the start of an epoch.
@@ -145,17 +145,17 @@ class Callback(object):
 
     def __init__(self):
         self.validation_data = None
-        self.runner = None
+        self.trainer = None
 
     def set_params(self, params):
         self.params = params
 
     @property
     def model(self):
-        return self.runner.model
+        return self.trainer.model
 
-    def set_runner(self, runner):
-        self.runner = runner
+    def set_trainer(self, trainer):
+        self.trainer = trainer
 
     def on_epoch_begin(self, epoch, logs=None):
         pass
@@ -392,7 +392,7 @@ class MetricCallback(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        output = self.runner.predict_generator(self.valid_loader)
+        output = self.trainer.predict_generator(self.valid_loader)
         score = self.metric_fn(self.valid_labels, output)
         print("{}: {:.4f}".format(self.metric_name, score))
         logs[self.metric_name] = score

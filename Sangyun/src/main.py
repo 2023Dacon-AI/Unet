@@ -23,7 +23,7 @@ from common.utils import (increment_path, random_split, rle_encode,
 from dataset import transform
 from dataset.dataset import SatelliteDataset
 from model.unet import UNet
-from training.runner import Runner
+from training.trainer import Trainer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 logger = logging.getLogger(__name__)
@@ -86,13 +86,41 @@ def main(cfg=None) -> None:
     if cfg.do_train:
         logger.info("*** Train ***")
 
-        cfg.output_dir = str(increment_path(Path(os.path.join(cfg.output_dir, cfg.architecture, cfg.encoder_name)) / "exp", exist_ok=cfg.overwrite_output_dir, mkdir=True))
-        
-        train_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=cfg.train_file, transform=transform.train_transform_2)
-        train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers, worker_init_fn=worker_init_fn)
+        cfg.output_dir = str(increment_path(
+            path=Path(os.path.join(cfg.output_dir, cfg.architecture, cfg.encoder_name)) / "exp", 
+            exist_ok=cfg.overwrite_output_dir, 
+            mkdir=True
+        ))
 
-        val_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=cfg.train_file, transform=transform.test_transform_1, val=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+
+        # --------------------------------------------------
+        # define datasets and dataloaders
+        # --------------------------------------------------
+        train_dataset = SatelliteDataset(
+            data_dir=cfg.data_dir, 
+            csv_file=cfg.train_file, 
+            transform=transform.train_transform_2
+        )
+        train_dataloader = DataLoader(
+            train_dataset, 
+            batch_size=cfg.batch_size, 
+            shuffle=True, 
+            num_workers=cfg.num_workers, 
+            worker_init_fn=worker_init_fn
+        )
+
+        val_dataset = SatelliteDataset(
+            data_dir=cfg.data_dir, 
+            csv_file=cfg.train_file, 
+            transform=transform.test_transform_1, 
+            val=True
+        )
+        val_dataloader = DataLoader(
+            val_dataset, 
+            batch_size=cfg.batch_size,
+            shuffle=False, 
+            num_workers=cfg.num_workers
+        )
 
         logger.info(f"Train dataset size: {len(train_dataset)}")
         logger.info(f"Validation dataset size: {len(val_dataset)}")
@@ -106,8 +134,8 @@ def main(cfg=None) -> None:
         losses[cfg.losses] = getters.get_loss(cfg.losses, init_params=None)
 
         metrics = {}
-        metrics[cfg.metrics] = [getters.get_metric(cfg.metrics, init_params=None)]
-        metrics["DiceScore"] = [getters.get_metric("DiceScore", init_params=None)]
+        metrics[cfg.metrics] = getters.get_metric(cfg.metrics, init_params=None)
+        metrics["DiceScore"] = getters.get_metric("DiceScore", init_params=None)
 
 
         # --------------------------------------------------
@@ -156,14 +184,14 @@ def main(cfg=None) -> None:
         # --------------------------------------------------
         print('Start training...')
 
-        runner = Runner(model, model_device=device)
-        runner.compile(
+        trainer = Trainer(model, model_device=device)
+        trainer.compile(
             optimizer=optimizer,
             loss=losses,
             metrics=metrics,
         )
 
-        runner.fit(
+        trainer.train(
             train_dataloader=train_dataloader,
             valid_dataloader=val_dataloader,
             callbacks=callbacks,
@@ -182,14 +210,14 @@ def main(cfg=None) -> None:
         logger.info(f"Test dataset size: {len(test_dataset)}")
         
         model.load_state_dict(torch.load('..\\models\\effb1\\exp13\\checkpoints\\best.pth'))
-        runner = Runner(model, model_device=device)
-        runner.compile(
+        trainer = Trainer(model, model_device=device)
+        trainer.compile(
             optimizer=optimizer,
             loss=losses,
             metrics=metrics,
         )
 
-        mask = runner.predict(
+        mask = trainer.predict(
             dataloader=test_dataloader,
             verbose=cfg.verbose,
         )
@@ -201,10 +229,10 @@ def main(cfg=None) -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1].endswith(".yaml"):
         cfg: TrainingArguments = simple_parsing.parse(config_class=TrainingArguments, args="--config_path " + sys.argv[1], add_config_path_arg=True)
-        # wandb.init(
-        #     project="dacon_satellite_segmentation",
-        #     config=cfg
-        # )
+        wandb.init(
+            project="dacon_satellite_segmentation",
+            config=cfg
+        )
     else:
         cfg: TrainingArguments = simple_parsing.parse(TrainingArguments)
 
