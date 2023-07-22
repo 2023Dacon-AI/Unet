@@ -69,7 +69,12 @@ def main(cfg=None) -> None:
     if cfg.architecture:  # Load from architecture
         logger.info("*** Loading from architecture ***")
 
-        init_params = {"encoder_name": cfg.encoder_name, "encoder_weights": cfg.encoder_weights, "classes": cfg.classes, "activation": cfg.activation}
+        init_params = {
+            "encoder_name": cfg.encoder_name, 
+            "encoder_weights": cfg.encoder_weights, 
+            "classes": cfg.classes, 
+            "activation": cfg.activation
+        }
         model = getters.get_model(architecture=cfg.architecture, init_params=init_params)    
     else:
         model = UNet()
@@ -81,14 +86,12 @@ def main(cfg=None) -> None:
     if cfg.do_train:
         logger.info("*** Train ***")
 
-        cfg.output_dir = str(increment_path(Path(cfg.output_dir) / "exp", exist_ok=cfg.overwrite_output_dir, mkdir=True))
-        train_csv = os.path.join(cfg.data_dir, cfg.train_file)
+        cfg.output_dir = str(increment_path(Path(os.path.join(cfg.output_dir, cfg.architecture, cfg.encoder_name)) / "exp", exist_ok=cfg.overwrite_output_dir, mkdir=True))
         
-        train_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=train_csv, transform=transform.train_transform_2, val=False)
+        train_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=cfg.train_file, transform=transform.train_transform_2)
         train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers, worker_init_fn=worker_init_fn)
-        #train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
 
-        val_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=train_csv, transform=transform.test_transform_1, val=True)
+        val_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=cfg.train_file, transform=transform.test_transform_1, val=True)
         val_dataloader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
 
         logger.info(f"Train dataset size: {len(train_dataset)}")
@@ -105,7 +108,6 @@ def main(cfg=None) -> None:
         metrics = {}
         metrics[cfg.metrics] = [getters.get_metric(cfg.metrics, init_params=None)]
         metrics["DiceScore"] = [getters.get_metric("DiceScore", init_params=None)]
-
 
 
         # --------------------------------------------------
@@ -138,16 +140,16 @@ def main(cfg=None) -> None:
 
         # add default logging and checkpoint callbacks
         if cfg.output_dir is not None:
-
-            # checkpointing
             callbacks.append(training.callbacks.ModelCheckpoint(
-                directory=os.path.join(cfg.output_dir, 'checkpoints'),
+                directory=cfg.output_dir,
                 monitor='val_loss',
                 save_best=True,
+                save_last=True,
                 save_top_k=0,
                 mode="min",
                 verbose=True,
             ))
+
 
         # --------------------------------------------------
         # start training
@@ -175,11 +177,23 @@ def main(cfg=None) -> None:
         logger.info("*** Test ***")
 
         test_csv = os.path.join(cfg.data_dir, cfg.test_file)
-        test_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=test_csv, transform=transform, infer=True)
+        test_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=test_csv, transform=transform.test_transform_1, test=True)
         test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
         logger.info(f"Test dataset size: {len(test_dataset)}")
+        
+        model.load_state_dict(torch.load('..\\models\\effb1\\exp13\\checkpoints\\best.pth'))
+        runner = Runner(model, model_device=device)
+        runner.compile(
+            optimizer=optimizer,
+            loss=losses,
+            metrics=metrics,
+        )
 
-        test(model, test_dataloader, cfg.data_dir)
+        mask = runner.predict(
+            dataloader=test_dataloader,
+            verbose=cfg.verbose,
+        )
+        #test(model, test_dataloader, cfg.data_dir)
 
 
 
@@ -187,10 +201,10 @@ def main(cfg=None) -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1].endswith(".yaml"):
         cfg: TrainingArguments = simple_parsing.parse(config_class=TrainingArguments, args="--config_path " + sys.argv[1], add_config_path_arg=True)
-        wandb.init(
-            project="dacon_satellite_segmentation",
-            config=cfg
-        )
+        # wandb.init(
+        #     project="dacon_satellite_segmentation",
+        #     config=cfg
+        # )
     else:
         cfg: TrainingArguments = simple_parsing.parse(TrainingArguments)
 

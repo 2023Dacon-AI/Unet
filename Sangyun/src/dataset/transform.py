@@ -43,8 +43,6 @@ train_transform_2 = A.Compose([
     A.Flip(p=0.75),
     A.Downscale(scale_min=0.5, scale_max=0.75, p=0.05),
     A.MaskDropout(max_objects=3, image_fill_value=0, mask_fill_value=0, p=0.1),
-    # A.Normalize(),
-    # ToTensorV2(),
 
 
     # color transforms

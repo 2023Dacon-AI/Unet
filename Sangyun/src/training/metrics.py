@@ -65,8 +65,6 @@ class MicroIoU(base.Metric):
         return score
     
 
-
-
 class DiceScore(base.Metric):
     __name__ = "dice_score"
 
