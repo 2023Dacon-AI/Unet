@@ -14,7 +14,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet_'
 
 # Model
-Encoder = 'timm-regnety_320'
+Encoder = 'timm-resnest101e'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
@@ -30,7 +30,7 @@ model = smp.Unet(
 )
 model.to(device)
 
-criterion = MixedLoss(alpha = 8.0,
+criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
