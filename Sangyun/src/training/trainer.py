@@ -1,15 +1,15 @@
 import re
 import sys
-import time
-import torch
-from typing import Optional, Type
 import warnings
+from collections import defaultdict
+from typing import Dict, List, Mapping, Optional, Type, Union
+
+import numpy as np
+import torch
 from tqdm import tqdm
 
-from typing import Dict, List, Mapping, Union
-from collections import defaultdict
-
 from .callbacks import CallbackList
+from common.utils import rle_encode
 
 
 def to_snake(name):
@@ -334,24 +334,27 @@ class Trainer:
             ignore_outputs=None,
     ):
         self._model_to_mode('eval')
+        with torch.no_grad():
+            result = []
 
-        ignore_outputs = ignore_outputs or []
-        output = {}
+            with tqdm(dataloader, desc='infer',
+                    disable=not verbose, file=sys.stdout) as p_dataloader:
+                for i, batch in enumerate(p_dataloader):
+                    batch = self._to_device(batch)
+                    output = self._feed_batch(batch)
 
-        with tqdm(dataloader, desc='infer',
-                  disable=not verbose, file=sys.stdout) as p_dataloader:
-            for i, batch in enumerate(p_dataloader):
-                batch = self._to_device(batch)
-                output = self._feed_batch(batch)
+                    masks = output['mask'].cpu().numpy()
+                    masks = np.squeeze(masks, axis=1)
+                    masks = (masks > 0.5).astype(np.uint8)
 
-                for k in output.keys():
-                    if k not in ignore_outputs:
-                        output[k].append(
-                            output[k].cpu().detach()
-                        )
+                    for i in range(len(batch['image'])):
+                        mask_rle = rle_encode(masks[i])
+                        if len(mask_rle.split()) < 10: # 예측된 건물 픽셀이 아예 없는 경우 -1
+                            result.append(-1)
+                        else:
+                            result.append(mask_rle)
 
-        output = {k: torch.cat(v, dim=0) for k, v in output.items()}
-        return output
+        return result
 
     @torch.no_grad()
     def predict_on_batch(self, batch):
