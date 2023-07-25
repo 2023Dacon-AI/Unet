@@ -26,7 +26,8 @@ model = smp.Unet(
     in_channels = 3,
     classes=1,
     aux_params=dict(
-        pooling='max',             # one of 'avg', 'max'
+        pooling='max',
+        classes=1
     )
 )
 model.to(device)
