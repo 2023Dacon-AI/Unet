@@ -25,6 +25,12 @@ model = smp.Unet(
     encoder_weights = Weights,
     in_channels = 3,
     classes=1,
+    aux_params=dict(
+        pooling='max',             # one of 'avg', 'max'
+        dropout=0.5,               # dropout ratio, default is None
+        activation='sigmoid',      # activation function, default is None
+        classes=1,                 # define number of output labels
+    )
 )
 model.to(device)
 model.load_state_dict(torch.load(model_dir+model_name+'.pt'))
