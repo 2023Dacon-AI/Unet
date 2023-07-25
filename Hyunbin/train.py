@@ -34,6 +34,7 @@ model = smp.Unet(
     )
 )
 model.to(device)
+#model.load_state_dict(torch.load(model_dir+model_name+'.pt'))
 
 criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
