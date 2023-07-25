@@ -27,8 +27,6 @@ model = smp.Unet(
     classes=1,
     aux_params=dict(
         pooling='max',             # one of 'avg', 'max'
-        activation='sigmoid',      # activation function, default is None
-        classes=1,                 # define number of output labels
     )
 )
 model.to(device)
