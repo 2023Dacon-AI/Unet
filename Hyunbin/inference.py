@@ -46,22 +46,22 @@ dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test,
 dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)
 
 with torch.no_grad():
-        model.eval()
-        result = []
-        for images in tqdm(dataloader_test):
-            images = images.float().to(device)
+    model.eval()
+    result = []
+    for images in tqdm(dataloader_test):
+        images = images.float().to(device)
 
-            outputs = model(images)
-            masks = torch.sigmoid(outputs).cpu().numpy()
-            masks = np.squeeze(masks, axis=1)
-            masks = (masks > 0.5).astype(np.uint8) # Threshold = 0.35
+        outputs = model(images)
+        masks = torch.sigmoid(outputs).cpu().numpy()
+        masks = np.squeeze(masks, axis=1)
+        masks = (masks > 0.5).astype(np.uint8) # Threshold = 0.35
 
-            for i in range(len(images)):
-                mask_rle = rle_encode(masks[i])
-                if len(mask_rle.split()) < 10: # 예측된 건물 픽셀이 아예 없는 경우 -1
-                    result.append(-1)
-                else:
-                    result.append(mask_rle)
-        submit = pd.read_csv('./sample_submission.csv')
-        submit['mask_rle'] = result
-        submit.to_csv('/content/drive/MyDrive/submit.csv', index=False)
+        for i in range(len(images)):
+            mask_rle = rle_encode(masks[i])
+            if len(mask_rle.split()) < 10: # 예측된 건물 픽셀이 아예 없는 경우 -1
+                result.append(-1)
+            else:
+                result.append(mask_rle)
+    submit = pd.read_csv('./sample_submission.csv')
+    submit['mask_rle'] = result
+    submit.to_csv('/content/drive/MyDrive/submit.csv', index=False)

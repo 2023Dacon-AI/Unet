@@ -35,7 +35,7 @@ transform_val = A.Compose(
     [
         A.HorizontalFlip(p=0.5),  # 좌우 대칭
         A.VerticalFlip(p=0.5),    # 상하 대칭
-        A.RandomCrop(224,224),
+        #A.RandomCrop(224,224),
         A.Resize(224, 224),
         A.Normalize(),
         ToTensorV2()
