@@ -13,7 +13,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet_'
 
 # Model
-Encoder = 'mit_b5'
+Encoder = 'timm-resnest269e'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
@@ -24,8 +24,12 @@ model = smp.Unet(
     encoder_name = Encoder,
     encoder_weights = Weights,
     in_channels = 3,
-    classes = 1,
-    activation = None
+    classes=1,
+    aux_params=dict(
+        pooling='max',             # one of 'avg', 'max'
+        activation='sigmoid',      # activation function, default is None
+        classes=1,                 # define number of output labels
+    )
 )
 model.to(device)
 model.load_state_dict(torch.load(model_dir+model_name+'.pt'))
