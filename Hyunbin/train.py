@@ -26,10 +26,6 @@ model = smp.Unet(
     encoder_weights = Weights,
     in_channels = 3,
     classes=1,
-    aux_params=dict(
-        pooling='max',
-        classes=1
-    )
 )
 model.to(device)
 
