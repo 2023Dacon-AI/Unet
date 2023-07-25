@@ -45,7 +45,7 @@ transform_test = A.Compose(
     ]
 )
 
-batch_size=64
+batch_size=32
 
 dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test, test=True)
 dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)
@@ -56,7 +56,7 @@ with torch.no_grad():
     for images in tqdm(dataloader_test):
         images = images.float().to(device)
 
-        outputs = model(images)
+        outputs, labels = model(images)
         masks = torch.sigmoid(outputs).cpu().numpy()
         masks = np.squeeze(masks, axis=1)
         masks = (masks > 0.5).astype(np.uint8) # Threshold = 0.35

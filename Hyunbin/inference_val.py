@@ -47,7 +47,7 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=64
+batch_size=32
 
 dataset_val = SatelliteDataset(csv_file='./train.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
@@ -59,7 +59,7 @@ with torch.no_grad():
         images = images.float().to(device)
         masks = masks.float().to(device)
 
-        outputs = model(images)
+        outputs, labels = model(images)
 
         preds = torch.sigmoid(outputs).detach().cpu().numpy()
         preds = np.squeeze(preds, axis=1)

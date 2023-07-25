@@ -64,7 +64,7 @@ transform_val = A.Compose(
     ]
 )
 
-batch_size=40
+batch_size=32
 epochs=80
 
 dataset = SatelliteDataset(csv_file='./train.csv', transform=transform, val=False)
@@ -83,7 +83,7 @@ for epoch in range(epochs):
         masks = masks.float().to(device)
 
         optimizer.zero_grad()
-        outputs = model(images)
+        outputs, labels = model(images)
         loss = criterion(outputs, masks.unsqueeze(1))
         loss.backward()
         optimizer.step()
@@ -97,7 +97,7 @@ for epoch in range(epochs):
         images = images.float().to(device)
         masks = masks.float().to(device)
 
-        outputs = model(images)
+        outputs, labels = model(images)
         loss = criterion(outputs, masks.unsqueeze(1))
 
         preds = torch.sigmoid(outputs).detach().cpu().numpy()
