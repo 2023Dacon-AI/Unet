@@ -74,16 +74,25 @@ def random_split(dataset, lengths: Sequence[Union[int, float]],
     return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
 
+def is_directory_empty(directory):
+    return not any(os.scandir(directory))
+
 def increment_path(path, exist_ok=False, sep='', mkdir=False):
     # Increment file or directory path, i.e. runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc.
     path = Path(path)  # os-agnostic
+    
     if path.exists() and not exist_ok:
         path, suffix = (path.with_suffix(''), path.suffix) if path.is_file() else (path, '')
+        
+        if path.is_dir() and is_directory_empty(path):  # Check if the folder is empty
+            return path
 
-        for n in range(2, 9999):
+        n = 2
+        while True:
             p = f'{path}{sep}{n}{suffix}'  # increment path
-            if not os.path.exists(p):  #
+            if not os.path.exists(p) or (os.path.isdir(p) and is_directory_empty(p)):
                 break
+            n += 1
         path = Path(p)
 
     if mkdir:

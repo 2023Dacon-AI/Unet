@@ -14,7 +14,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet_'
 
 # Model
-Encoder = 'timm-regnety_320'
+Encoder = 'timm-resnest101e'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
@@ -30,11 +30,11 @@ model = smp.Unet(
 )
 model.to(device)
 
-criterion = MixedLoss(alpha = 8.0,
+criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=0.1, patience=10, verbose=True
+    optimizer, mode='min', factor=0.1, patience=3, verbose=True
 )
 
 #Transform
@@ -42,7 +42,7 @@ transform = A.Compose(
     [
         A.HorizontalFlip(p=0.5),  # 좌우 대칭
         A.VerticalFlip(p=0.5),    # 상하 대칭
-        A.RandomCrop(224,224),
+        #A.RandomCrop(224,224),
         A.Resize(224, 224),
         A.Normalize(),
         ToTensorV2()
@@ -50,22 +50,22 @@ transform = A.Compose(
 )
 transform_val = A.Compose(
     [
-        A.HorizontalFlip(p=0.5),  # 좌우 대칭
-        A.VerticalFlip(p=0.5),    # 상하 대칭
-        A.RandomCrop(224,224),
+        #A.HorizontalFlip(p=0.5),  # 좌우 대칭
+        #A.VerticalFlip(p=0.5),    # 상하 대칭
+        #A.RandomCrop(224,224),
         A.Resize(224, 224),
         A.Normalize(),
         ToTensorV2()
     ]
 )
 
-batch_size=32
+batch_size=40
 epochs=80
 
-dataset = SatelliteDataset(csv_file='./train_edited.csv', transform=transform, val=False)
+dataset = SatelliteDataset(csv_file='./train.csv', transform=transform, val=False)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
-dataset_val = SatelliteDataset(csv_file='./train_edited.csv', transform=transform_val, val=True)
+dataset_val = SatelliteDataset(csv_file='./train.csv', transform=transform_val, val=True)
 dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4)
 
 best_dice_score=0

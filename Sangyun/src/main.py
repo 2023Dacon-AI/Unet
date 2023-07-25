@@ -1,140 +1,225 @@
 #!/usr/bin/env python
 # coding=utf-8
 
+import dataclasses
+import json
 import logging
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
-import wandb
 
-import numpy as np
 import pandas as pd
 import simple_parsing
 import torch
+from torch.utils.data import DataLoader
+
+import training
+import wandb
+from common import getters
 from common.argparse import TrainingArguments
 from common.utils import (increment_path, random_split, rle_encode,
                           seed_everything)
-from dataset.dataset import SatelliteDataset, transform
+from dataset import transform
+from dataset.dataset import SatelliteDataset
 from model.unet import UNet
-from torch.utils.data import DataLoader
-from tqdm import tqdm
+from training.trainer import Trainer
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 logger = logging.getLogger(__name__)
 
 
-def train(model, train_dataloader, val_dataloader, criterion, optimizer, num_epochs, output_dir):
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    best_vloss = float('inf')
+def worker_init_fn(seed):
+    import random
+    import time
 
-    for epoch in range(num_epochs):
-        model.train(True)
-        train_loss = 0.
-        val_loss = 0.
-
-        for data in tqdm(train_dataloader):
-            images = data[0].float().to(device)             # (batch_size, 3, 224, 224)
-            masks =  data[1].float().to(device)             # (batch_size, 224, 224)
-
-            optimizer.zero_grad()
-            outputs = model(images)                         # (batch_size, 1, 224, 224)
-            loss = criterion(outputs, masks.unsqueeze(1))
-            loss.backward()
-            optimizer.step()
-
-            train_loss += loss.item()
-
-        train_loss /= len(train_dataloader)
-
-        # Evaluate on the validation set
-        model.eval()
-        with torch.no_grad():
-            for vdata in tqdm(val_dataloader):
-                vimages, vmasks = vdata[0].float().to(device), vdata[1].float().to(device)
-                voutputs = model(vimages)
-                vloss = criterion(voutputs, vmasks.unsqueeze(1))
-                val_loss += vloss
-
-        val_loss /= len(val_dataloader)
-
-        print('EPOCH {}: Train Loss {}, Val Loss {}'.format(epoch + 1, train_loss, val_loss))
-        wandb.log({'Train Loss': train_loss, 'epoch': epoch+1})
-        wandb.log({'Val Loss': val_loss, 'epoch': epoch+1})
-
-        if val_loss < best_vloss:
-            best_vloss = val_loss
-            model_path = os.path.join(output_dir, 'UNet_{}_{}.pt'.format(timestamp, epoch+1))
-            torch.save(model.state_dict(), model_path)
-
-
-def test(model, test_dataloader, data_dir):
-        model.eval()
-        with torch.no_grad():
-            result = []
-            for images in tqdm(test_dataloader):
-                images = images.float().to(device)
-
-                outputs = model(images)
-                masks = torch.sigmoid(outputs).cpu().numpy()
-                masks = np.squeeze(masks, axis=1)
-                masks = (masks > 0.5).astype(np.uint8) # Threshold = 0.35
-
-                for i in range(len(images)):
-                    mask_rle = rle_encode(masks[i])
-                    if len(mask_rle.split()) < 10: # 예측된 건물 픽셀이 아예 없는 경우 -1
-                        result.append(-1)
-                    else:
-                        result.append(mask_rle)
-            submit = pd.read_csv(os.path.join(data_dir, 'sample_submission.csv'))
-            submit['mask_rle'] = result
-            submit.to_csv(os.path.join(data_dir, 'submit.csv'), index=False)
+    import numpy as np
+    seed = (seed + 1) * (int(time.time()) % 60)  # set random seed every epoch!
+    random.seed(seed + 1)
+    np.random.seed(seed)
 
 
 def main(cfg=None) -> None:
-    seed_everything(cfg.seed)
-
     # Load model
-    if cfg.model_path:  # Load from checkpoint
-        model = UNet()
-        model.load_state_dict(torch.load(cfg.model_path))
-        model.to(device)
+    if cfg.architecture:  # Load from architecture
+        logger.info("*** Loading from architecture ***")
+
+        init_params = {
+            "encoder_name": cfg.encoder_name, 
+            "encoder_weights": cfg.encoder_weights, 
+            "classes": cfg.classes, 
+            "activation": cfg.activation
+        } 
+        model = getters.get_model(architecture=cfg.architecture, init_params=init_params)    
     else:
-        model = UNet().to(device)
-    
+        model = UNet()
+    model.to(device)
+
+    params = model.parameters()
+
 
     if cfg.do_train:
         logger.info("*** Train ***")
 
-        cfg.output_dir = str(increment_path(Path(cfg.output_dir) / "exp", exist_ok=cfg.overwrite_output_dir, mkdir=True))
-        train_csv = os.path.join(cfg.data_dir, cfg.train_file)
-        
-        train_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=train_csv, transform=transform, val=False)
-        train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
+        cfg.output_dir = str(increment_path(
+            path=Path(os.path.join(cfg.output_dir, cfg.architecture, cfg.encoder_name)) / "exp", 
+            exist_ok=cfg.overwrite_output_dir, 
+            mkdir=True
+        ))
 
-        val_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=train_csv, transform=transform, val=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+
+        # --------------------------------------------------
+        # define datasets and dataloaders
+        # --------------------------------------------------
+        train_dataset = SatelliteDataset(
+            data_dir=cfg.data_dir, 
+            csv_file=cfg.train_file, 
+            transform=transform.train_transform_2
+        )
+        train_dataloader = DataLoader(
+            train_dataset, 
+            batch_size=cfg.batch_size, 
+            shuffle=True, 
+            num_workers=cfg.num_workers, 
+            worker_init_fn=worker_init_fn
+        )
+
+        val_dataset = SatelliteDataset(
+            data_dir=cfg.data_dir, 
+            csv_file=cfg.train_file, 
+            transform=transform.test_transform_1, 
+            val=True
+        )
+        val_dataloader = DataLoader(
+            val_dataset, 
+            batch_size=cfg.batch_size,
+            shuffle=False, 
+            num_workers=cfg.num_workers
+        )
 
         logger.info(f"Train dataset size: {len(train_dataset)}")
         logger.info(f"Validation dataset size: {len(val_dataset)}")
 
 
-        criterion = torch.nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate)
+        # --------------------------------------------------
+        # define losses and metrics functions
+        # --------------------------------------------------
+        losses = {}
+        #losses[cfg.losses] = getters.get_smp_loss(cfg.losses, init_params={'mode': 'binary'})
+        losses[cfg.losses] = getters.get_loss(cfg.losses, init_params=None)
 
-        train(model, train_dataloader, val_dataloader, criterion, optimizer, cfg.num_epochs, cfg.output_dir)
+        metrics = {}
+        metrics[cfg.metrics] = getters.get_metric(cfg.metrics, init_params=None)
+        metrics["DiceScore"] = getters.get_metric("DiceScore", init_params=None)
+
+
+        # --------------------------------------------------
+        # define optimizer and scheduler
+        # --------------------------------------------------
+        optimizer = getters.get_optimizer(
+            cfg.optimizer,
+            model_params=params,
+            init_params={"lr":cfg.lr},
+        )
+
+        if cfg.scheduler:
+            scheduler = getters.get_scheduler(
+                cfg.scheduler,
+                optimizer,
+                init_params={"epochs":cfg.epochs},
+            )
+        else:
+            scheduler = None
+
+
+        # --------------------------------------------------
+        # define callbacks
+        # --------------------------------------------------
+        callbacks = []
+
+        # add scheduler callback
+        if scheduler is not None:
+            callbacks.append(training.callbacks.Scheduler(scheduler))
+
+        # add default logging and checkpoint callbacks
+        if cfg.output_dir is not None:
+            callbacks.append(training.callbacks.ModelCheckpoint(
+                directory=cfg.output_dir,
+                monitor='val_loss',
+                save_best=True,
+                save_top_k=0,
+                mode="min",
+                verbose=True,
+            ))
+
+
+        # --------------------------------------------------
+        # start training
+        # --------------------------------------------------
+        print('Start training...')
+
+        trainer = Trainer(model, model_device=device)
+        trainer.compile(
+            optimizer=optimizer,
+            loss=losses,
+            metrics=metrics,
+        )
+
+        trainer.train(
+            train_dataloader=train_dataloader,
+            valid_dataloader=val_dataloader,
+            callbacks=callbacks,
+            epochs=cfg.epochs,
+            accumulation_steps=cfg.accumulation_steps,
+            verbose=cfg.verbose,
+        )
+
+        if cfg.output_dir is not None:
+            with open(os.path.join(cfg.output_dir, "config.json"), "w") as json_file:
+                config = dataclasses.asdict(cfg)
+                config["wandb_url"] = wandb.run.get_url()
+                json.dump(config, json_file, indent=4)
 
 
     if cfg.do_test:
         logger.info("*** Test ***")
 
-        test_csv = os.path.join(cfg.data_dir, cfg.test_file)
-        test_dataset = SatelliteDataset(data_dir=cfg.data_dir, csv_file=test_csv, transform=transform, infer=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+        if cfg.do_train: # If was on train, load best model
+            state_dict = torch.load(os.path.join(cfg.output_dir, "best.pth"))["state_dict"]
+            model.load_state_dict(state_dict)
+        else:
+            cfg.output_dir = os.path.join(
+            cfg.output_dir, 
+            cfg.architecture, 
+            cfg.encoder_name, 
+            "exp"                      # Change experiment folder
+            )
+            state_dict = torch.load(os.path.join(cfg.output_dir, "best.pth"))["state_dict"]
+            model.load_state_dict(state_dict)
+
+        test_dataset = SatelliteDataset(
+            data_dir=cfg.data_dir, 
+            csv_file=cfg.test_file, 
+            transform=transform.test_transform_1, 
+            test=True
+        )
+        test_dataloader = DataLoader(
+            test_dataset, 
+            batch_size=cfg.batch_size, 
+            shuffle=False, 
+            num_workers=cfg.num_workers
+        )
         logger.info(f"Test dataset size: {len(test_dataset)}")
+        
+        trainer = Trainer(model, model_device=device)
 
-        test(model, test_dataloader, cfg.data_dir)
-
+        results = trainer.predict(
+            dataloader=test_dataloader,
+            verbose=cfg.verbose,
+        )
+        submit = pd.read_csv(os.path.join(cfg.data_dir, 'sample_submission.csv'))
+        submit['mask_rle'] = results
+        submit.to_csv(os.path.join(cfg.output_dir, 'submit.csv'), index=False)
+        wandb.save(os.path.join(cfg.output_dir, 'submit.csv'))
 
 
 

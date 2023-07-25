@@ -8,6 +8,9 @@ Seongwan/train_img/
 Sangyun/models/
 Sangyun/data/
 Sangyun/src/wandb
+Hyunbin/train_img
+Hyunbin/test_img
+Hyunbin/*.csv
 # C extensions
 *.so
 
