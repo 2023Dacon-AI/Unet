@@ -14,7 +14,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet_'
 
 # Model
-Encoder = 'timm-regnety_320'
+Encoder = 'mit_b5'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
@@ -40,7 +40,7 @@ transform_test = A.Compose(
     ]
 )
 
-batch_size=40
+batch_size=64
 
 dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test, test=True)
 dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)

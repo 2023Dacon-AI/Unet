@@ -14,7 +14,7 @@ model_dir = '/content/drive/MyDrive/'
 model_name='unet_'
 
 # Model
-Encoder = 'timm-resnest101e'
+Encoder = 'mit_b5'
 Weights = 'imagenet'
 prep_fun = smp.encoders.get_preprocessing_fn(
     Encoder,
@@ -50,8 +50,8 @@ transform = A.Compose(
 )
 transform_val = A.Compose(
     [
-        #A.HorizontalFlip(p=0.5),  # 좌우 대칭
-        #A.VerticalFlip(p=0.5),    # 상하 대칭
+        A.HorizontalFlip(p=0.5),  # 좌우 대칭
+        A.VerticalFlip(p=0.5),    # 상하 대칭
         #A.RandomCrop(224,224),
         A.Resize(224, 224),
         A.Normalize(),
