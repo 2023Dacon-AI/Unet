@@ -67,5 +67,5 @@ with torch.no_grad():
         masks = masks.detach().cpu().numpy()
 
         dice_score+=calculate_dice_scores(masks,preds) * len(images)
-    dice_score /= dataset_val
+    dice_score /= len(dataset_val)
     print(f"dice score for validation: {dice_score}")
