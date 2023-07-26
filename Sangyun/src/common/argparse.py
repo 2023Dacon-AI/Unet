@@ -76,6 +76,14 @@ class TrainingArguments:
         default=None, 
         metadata={"help": "Model scheduler function"}
     )
+    train_transform: str = field(
+        default='train_transform_1', 
+        metadata={"help": "Model training augmentation function"}
+    )
+    test_transform: str = field(
+        default='test_transform_1', 
+        metadata={"help": "Model test augmentation function"}
+    )
 
     # Other Configuration
     overwrite_output_dir: bool = field(

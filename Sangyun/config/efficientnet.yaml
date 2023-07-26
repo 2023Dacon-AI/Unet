@@ -27,5 +27,6 @@
   optimizer: Adam,
   lr: 0.0001,
   scheduler: PolyLR,
-
+  train_transform: train_transform_2,
+  test_transform: test_transform_1
 }

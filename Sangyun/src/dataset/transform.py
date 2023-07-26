@@ -80,3 +80,28 @@ train_transform_2 = A.Compose([
     ),
     post_transform_fn,
 ])
+
+# crop 224 and augs
+train_transform_3 = A.Compose([
+
+    A.ShiftScaleRotate(scale_limit=0.2, rotate_limit=45, border_mode=0, value=0, p=0.7),
+    A.PadIfNeeded(224, 224, border_mode=0, value=0, p=1.),
+    A.RandomCrop(224, 224, p=1.),
+    A.Flip(p=0.75),
+    A.Downscale(scale_min=0.5, scale_max=0.75, p=0.05),
+
+
+    # color transforms
+    A.OneOf(
+        [
+            A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=1),
+            A.RandomGamma(gamma_limit=(70, 130), p=1),
+            A.ChannelShuffle(p=0.2),
+            A.HueSaturationValue(hue_shift_limit=30, sat_shift_limit=40, val_shift_limit=30, p=1),
+            A.RGBShift(r_shift_limit=30, g_shift_limit=30, b_shift_limit=30, p=1),
+        ],
+        p=0.8,
+    ),
+
+    post_transform_fn,
+])
