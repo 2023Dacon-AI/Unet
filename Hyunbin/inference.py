@@ -27,6 +27,7 @@ model = smp.Unet(
     in_channels = 3,
     classes=1,
     aux_params=dict(
+        pooling='max',
         dropout=0.5,               # dropout ratio, default is None
         activation='sigmoid',      # activation function, default is None
         classes=1,                 # define number of output labels
@@ -44,7 +45,7 @@ transform_test = A.Compose(
     ]
 )
 
-batch_size=32
+batch_size=64
 
 dataset_test = SatelliteDataset(csv_file='./test.csv', transform=transform_test, test=True)
 dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=4)
