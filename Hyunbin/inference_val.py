@@ -26,7 +26,6 @@ model = smp.Unet(
     in_channels = 3,
     classes=1,
     aux_params=dict(
-        pooling='max',             # one of 'avg', 'max'
         dropout=0.5,               # dropout ratio, default is None
         activation='sigmoid',      # activation function, default is None
         classes=1,                 # define number of output labels
