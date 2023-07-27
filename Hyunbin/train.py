@@ -37,7 +37,7 @@ model.to(device)
 
 criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode='min', factor=0.1, patience=3, verbose=True
 )
