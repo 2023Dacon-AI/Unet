@@ -1,3 +1,11 @@
+# 실험사항
+
+# 현재 lr 0.001 dropout 0.5
+
+# 1. lr 0.0005 dropout 0.5
+# 2. lr 0.001 dropout 0.3
+# 3. lr 0.0005 dropout 0.3
+
 import torch
 import numpy as np
 import segmentation_models_pytorch as smp
@@ -40,7 +48,7 @@ criterion = MixedLoss(alpha = 10.0,
                       gamma = 2.0)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode='min', factor=0.8, patience=3, verbose=True
+    optimizer, mode='min', factor=0.8, patience=2, verbose=True
 )
 
 #Transform
